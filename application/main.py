@@ -7,8 +7,16 @@ import geopandas as gpd
 from lets_plot import *
 from shapely.geometry import Point
 import utils as webutils
+import pathlib
+import os
 
 LetsPlot.setup_html()
+
+cwd_folder = os.getcwd().split("/").pop()
+path_prefix = ""
+
+if cwd_folder != "application":
+    path_prefix = "application"
 
 
 # -------------------------------------------------
@@ -20,12 +28,12 @@ st.set_page_config(layout="wide")
 # LOAD DATA
 # -------------------------------------------------
 @st.cache_data
-def load_data():
-    df = pd.read_csv("data/cm.subdiv.agg.csv")
+def load_data():    
+    df = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv"))
     return df
 
 @st.cache_data
-def load_data_aggregate(filename_with_ext="data/cm.subdiv.agg.csv"):
+def load_data_aggregate(filename_with_ext=pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv")):
     df = pd.read_csv(f"data/{filename_with_ext}")
     return df
 
@@ -33,16 +41,16 @@ def load_data_aggregate(filename_with_ext="data/cm.subdiv.agg.csv"):
 def load_data_ebp(admin_level="region"):
     res = None
     if admin_level == "region":
-        ebp = pd.read_csv("data/cm.region.ebp.ind.csv")
-        ebp_mse = pd.read_csv("data/cm.region.ebp.mse.csv")
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     elif admin_level == "division":
-        ebp = pd.read_csv("data/cm.div.ebp.ind.csv")
-        ebp_mse = pd.read_csv("data/cm.div.ebp.mse.csv")
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     elif admin_level == "subdivision":
-        ebp = pd.read_csv("data/cm.subdiv.ebp.ind.csv")
-        ebp_mse = pd.read_csv("data/cm.subdiv.ebp.mse.csv")
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     return res
 
@@ -51,13 +59,13 @@ def load_data_ebp(admin_level="region"):
 def load_data_agg(admin_level="region"):
     res = None
     if admin_level == "region":
-        res = pd.read_csv("data/cm.region.agg.csv")
+        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.agg.csv"))
     elif admin_level == "division":
-        res = pd.read_csv("data/cm.div.agg.csv")
+        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.agg.csv"))
     elif admin_level == "subdivision":
-        res = pd.read_csv("data/cm.subdiv.agg.csv")   
+        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv"))   
     elif admin_level == "country":
-        res = pd.read_csv("data/cm.country.agg.csv")  
+        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.country.agg.csv"))  
     return res
 
 
@@ -69,7 +77,7 @@ def load_data_agg(admin_level="region"):
 
 @st.cache_data
 def load_geojson():
-    with open("maps/cm.subdivision.geojson") as f:
+    with open(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson")) as f:
         geojson = json.load(f)
     return geojson
 
@@ -78,24 +86,24 @@ def load_geojson():
 def load_geojson_cm(admin_level="region"):
     geojson = None
     if admin_level == "region":
-        with open("maps/cm.region.geojson") as f:
+        with open(pathlib.Path(path_prefix + "/maps/cm.region.geojson")) as f:
             geojson = json.load(f)
     elif admin_level == "division":
-        with open("maps/cm.division.geojson") as f:
+        with open(pathlib.Path(path_prefix + "/maps/cm.division.geojson")) as f:
             geojson = json.load(f)
     elif admin_level == "subdivision":
-        with open("maps/cm.subdivision.geojson") as f:
+        with open(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson")) as f:
             geojson = json.load(f)
     return geojson
 
 @st.cache_data
 def load_geojson_gdf(admin_level="region"):
     if admin_level == "region":        
-        gdf = gpd.read_file("maps/cm.region.geojson")
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.region.geojson"))
     elif admin_level == "division":        
-        gdf = gpd.read_file("maps/cm.division.geojson")
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.division.geojson"))
     elif admin_level == "subdivision":        
-        gdf = gpd.read_file("maps/cm.subdivision.geojson")
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson"))
     return gdf
 
 
@@ -257,17 +265,17 @@ else:
 
         st.caption("Headcount ratio")
         with col1:
-            gdf = gpd.read_file("maps/cm.subdivision.geojson")
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @subdivision').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT,width=WIDTH)
         with col2:
-            gdf = gpd.read_file("maps/cm.division.geojson")
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.division.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @division').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)
         with col3:
-            gdf = gpd.read_file("maps/cm.region.geojson")
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.region.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @region').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)    
