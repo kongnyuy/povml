@@ -11,6 +11,7 @@ import pathlib
 import os
 
 LetsPlot.setup_html()
+
 cwd_folder = os.getcwd().split("/").pop()
 path_prefix = ""
 
