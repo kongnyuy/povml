@@ -16,6 +16,7 @@ LetsPlot.setup_html()
 cwd_folder = Path.cwd().name
 path_prefix = ""
 
+
 if cwd_folder != "application":
     path_prefix = "application/"
 
