@@ -1,0 +1,14 @@
+Geocoding services used for gps coordinate (lat, long) pairs to administrative area specifications (street, city,region, ....)
+
+https://www.geoapify.com/tools/reverse-geocoding-online/
+- offers free 500 record processing
+- ofrers api services: https://api.geoapify.com/v1/geocode/reverse?lat=52.478117501285965&lon=13.47717282413089&type=street&apiKey=YOUR_API_KEY
+
+
+https://www.geonames.org
+-------------
+offers dumped data files per country and variety of web servicies such countryinfo, nearby_lookups, weather, ....
+
+https://www.geonames.org/export/ws-overview.
+
+

@@ -1,0 +1,797 @@
+library(rgdal)
+library(haven)
+library(SUMMER)
+library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(emdi)
+library(ggplot2)
+library(gridExtra)
+library(povmap)
+library(sf)
+
+# gis datasets
+gis_roor_dir = "F:\\Workspaces\\academics\\datasets\\cameroon\\gis\\geojson\\"
+
+get_map_file = function(fname) {
+  return(paste0(gis_roor_dir, fname))
+}
+
+
+root <- "F:/Workspaces/academics/masters_thesis/"
+setwd(root)
+
+# Load the data
+#data <- read.csv("data/processed/main_meaningfull_names_dhs_hr_gis_2018.csv")
+#data <- read.csv("data/processed/main_dhs_names_dhs_hr_gis_2018.csv")
+
+#data <- readRDS("data/processed/main_dhs_names_dhs_hr_gis_2018.rds")
+geo1 <- readOGR("data/dataset/cameroon/gis/geojson/gadm41_CMR_1.json")
+geo2 <- readOGR("data/dataset/cameroon/gis/geojson/gadm41_CMR_2.json")
+geo3 <- readOGR("data/dataset/cameroon/gis/geojson/gadm41_CMR_3.json")
+
+
+# Save adjacency matrix ---------------------------------------------------
+
+load(file = "data/processed/adjencency_matrix_admin123.Rdata") # amat1, amat2, amat3
+#write.csv(amat3, file = "data/processed/adjencency_matrix_admin3.csv")
+
+# point (lat,long) to region name
+
+load(file = "data/processed/reverse_geo_admin123.Rdata") # gps1, gps2, gps3, 
+
+# load newly merged dataset for geo_reversed fields
+admin321 <-  readRDS(file = "data/processed/reverse_geo_admin321.rds")
+
+
+#regions <- gps1 %>% select(region) %>% unique()
+#divisions <- gps2 %>% select(division) %>% unique()
+#subdivs <- gps3 %>% select(subdivision) %>% unique()
+
+#write.csv(gps3, file = "data/processed/reverse_geo_admin3.csv")
+
+# Estimating the poverty prevalence
+
+cmhr <- readRDS("data/processed/main_dhs_names_dhs_hr_gis_2018.rds")
+
+# simple workable format for out dataset
+# format (clusterid, id, weight, strata,age, wealth, region, division, subdiv)
+
+# make the wealthscore hv271 positive
+wshift = abs(min(cmhr$hv271)) + 10
+
+trans_dep_var = function(df.col) {
+  return(df.col + wshift)
+}
+
+
+data <- data.frame(
+  cluster = cmhr$hv001,
+  id = cmhr$hv002,
+  weight = cmhr$hv005,
+  strata = cmhr$hv023,
+  age = cmhr$hv220,
+  wealth = cmhr$hv270,
+  wealthscore = cmhr$hv271,
+  
+  wealthscoreshifted = cmhr$hv271 +  wshift,
+  
+  reg = cmhr$hv024,
+  typeresidence = cmhr$hv025,
+  edu = cmhr$hv106_01,
+  water_drink = cmhr$hv201,
+  electricity = cmhr$hv206,
+  automobile = cmhr$hv212,
+  cook_fuel = cmhr$hv226,
+  toilet = cmhr$hv205,
+  mat_floor = cmhr$hv213,
+  malaria_rdt = cmhr$sb118_01,
+  anemia_level = cmhr$ha57_01,
+  household_size = cmhr$hv009,
+  num_rooms = cmhr$hv216
+  
+
+)
+
+
+# merge with gis data
+
+datagis <- merge(data, admin321[,c("cluster","region","division","subdivision")], by ="cluster", all.x = TRUE)
+#datagis_clean <- na.omit(datagis)
+
+
+# DATA IMPUTATION ---------------------------------------------------------
+
+# determine columns with null values
+null_column_count = function(df) {
+  null_cols = list()
+  my_map <- new.env(hash = TRUE)
+  for (cname in colnames(df)) {
+    null_cols[cname] = sum(is.na(df[cname]))
+    #print(sum(is.na(data[cname])))
+  }
+  return(null_cols)
+}
+
+
+# library(ggthemes)
+
+# ggplot(data, aes(x = hv106_01)) + geom_bar() + theme_bw()
+# # pie charts
+# ggplot(data, aes(x = "", y = sb118_01, fill = sb118_01)) +
+#   geom_bar(stat = "identity", width = 1) +
+#   coord_polar("y", start = 0) +
+#   theme_void() # Removes background grid and axes
+# ggplot(data, aes(x = hv106_01)) + geom_bar(fill = "steelblue", color = "white") + theme_minimal() + labs(title = "School attendance", x = "Educational level",y = "Count")
+
+# plot themes
+
+
+# ggplot(ebp_data_small, aes(x = hv201)) + geom_bar(color="black", fill="#fdcb7c") + coord_flip() + theme_minimal() +
+# theme(
+#   text = element_text(color = "black"),
+#   axis.text = element_text(color = "black"),
+#   axis.title = element_text(color = "black"),
+#   plot.title = element_text(color = "black", face = "bold"),
+#   #panel.grid = element_line(color = "gray", alpha = 0.1),
+#   #axis.line = element_line(color = "orange"),
+#   legend.text = element_text(color = "black"),
+#   legend.title = element_text(color = "black")
+# )
+
+
+#library(mice)
+
+#imputed_data <- mice(data, method = 'pmm', m = 5)
+
+datagis_clean <- datagis %>% mutate(
+  #hv107_01 = factor(ifelse(is.na(hv107_01),get_mode(my_factor), as.character(my_factor))))
+  #hv107_01 = factor(ifelse(is.na(hv107_01),as.character(0), as.character(hv107_01))),
+  #hv129_01 = factor(ifelse(is.na(hv129_01),as.character("Don't know"), as.character(hv129_01))),
+  #hv202 = factor(ifelse(is.na(hv202),as.character("other"), as.character(hv202))),
+  malaria_rdt = factor(ifelse(is.na(malaria_rdt),as.character("other"), as.character(malaria_rdt))),
+  anemia_level = factor(ifelse(is.na(anemia_level),as.character("Not anemic"), as.character(anemia_level))),
+  reg = recode(reg, 
+                 "adamawa" = "Adamaoua",
+                 "centre (without yaounde)" = "Centre",
+                 "douala" =  "Littoral", # ignoring population density
+                 "east" = "Est",
+                 "far-north" = "Extrême-Nord",
+                 "littoral (without douala)" = "Littoral",
+                 "north" = "Nord",
+                 "north-west" = "Nord-Ouest",
+                 "south" = "Sud",
+                 "west" = "Ouest",                         
+                 "south-west" = "Sud-Ouest",
+                 "yaounde" = "Centre" # ignoring population density                                              
+  ),
+  crowding = household_size / num_rooms,
+  mat_floor = factor(ifelse(mat_floor %in% c("parquet or polished wood",
+                                     "dung","wood planks","palm/bamboo"),
+                        as.character("wood"), as.character(mat_floor))), # because of little presence of attributes in some domains
+  cook_fuel = factor(ifelse(cook_fuel %in% c("animal dung", 
+                                     "agricultural crop",
+                                     "straw/shrubs/grass",
+                                     "biogas"), as.character("plant_based"), as.character(cook_fuel) )),
+  toilet = factor(ifelse(toilet %in% c("other",
+                                     "bucket toilet",
+                                     "composting toilet",
+                                     "flush, don't know where",
+                                     "flush to somewhere else"), as.character("other"), as.character(toilet))),
+  water_drink = recode(water_drink, 
+                 "piped into dwelling"= "piped_home_vicinity",
+                 "piped water" = "piped_home_vicinity",
+                 "piped to yard/plot" = "piped_home_vicinity",
+                 "piped to neighbor" = "piped_home_vicinity",
+                 "public tap/standpipe" = "public tap/standpipe",
+                 "tube well water" = "well",
+                 "tube well or borehole" = "well",
+                 "dug well (open/protected)" = "well",
+                 "protected well" = "well",
+                 "unprotected well" = "well",
+                 "surface from spring" = "spring",
+                 "protected spring" = "spring",
+                 "unprotected spring" = "spring",
+                 "river/dam/lake/ponds/stream/canal/irrigation channel" = "surface",
+                 "rainwater" = "rainwater",
+                 "tanker truck" = "other",
+                 "cart with small tank" ="other",
+                 "bottled water" = "",
+                 "sachet water" = "other",
+                 "other" = "other"
+                 
+  )
+)
+
+#datc <- na.omit(datagis_clean)
+datc <- datagis_clean
+
+
+# Imputing missing domains with absent values in the dataset --------------
+
+all_domains <- data.frame(subdivision = rownames(amat3))
+data_full <- merge(all_domains, mdat, 
+                   by = "subdivision", 
+                   all.x = TRUE)
+
+
+
+
+
+
+
+# Direct estimation
+# ---------------------
+
+# Head Count Ratio thresshold: 60% of median(hv271)
+
+# y_thresshold = 0.6 * median(ebp_data_small$hv271)
+
+# m = median(ebp_data_small$hv271)
+
+
+save_plots_cus <- function(patha, plot_objs){
+  for(pl in plot_objs) {
+    ggsave(patha, pl)
+  }
+}
+
+
+
+# Sliced sample -----------------------------------------------------------
+
+# Custom survey sampling inorder to satisfy the tool
+# create a sample data for the survey
+# ----------------
+dhs_cluster_size = 25
+no_admin2_cm = 58
+popul_size = nrow(datc)
+
+sample_size = dhs_cluster_size * no_admin2_cm
+
+inclusion_prop = sample_size / popul_size # n/N 
+
+sampling_weight = 1 / inclusion_prop # 1 / pi_k => N/n
+
+samples_data = list()
+
+
+# ----- end of custom survey sampling ------------
+
+#inspired by booStraping using SRS with replacement and assuming similar distribution
+# between the samples and the population
+
+sampled_data = slice_sample(datc, n = sample_size, replace = FALSE) # creating the sample <----
+#sampled_data = slice_sample(data_full, n = sample_size, replace = FALSE) # creating the sample <----
+
+
+# library(sampling)
+
+
+
+# EBP model estimation ----------------------------------------------------
+
+ebp_model_admin3 <- ebp(
+  fixed = wealthscoreshifted ~ typeresidence  + edu + water_drink + electricity + automobile + cook_fuel + toilet + mat_floor + malaria_rdt + anemia_level + crowding,
+  pop_data = datc,
+  #pop_data = data_full,
+  pop_domains = "subdivision", # Replace with your domain variable
+  #smp_data = datc,
+  smp_data = sampled_data,
+  smp_domains = "subdivision", # Replace with your domain variable
+  #threshold = median(ebp_data_small$hv271), # Define a threshold if needed
+  #weights = "weight",
+  pop_weights = "weight",
+  interval = c(0,5),
+  transformation = "log", # Transformation for the dependent variable
+  L = 2, # Number of Monte Carlo simulations
+  B = 2,
+  na.rm = TRUE,
+  MSE = TRUE,
+  cpus = 8,
+  #aggregate_to = "domain"
+)
+
+# save ebp3 model
+saveRDS(ebp_model_admin3, file = "data/processed/out/ebp_model_admin3.rds")
+
+model_direct_admin3 <- emdi::direct(y = "wealthscoreshifted",
+                                    smp_data = datc, 
+                                    weights = "weight", 
+                                    #threshold = m,
+                                    smp_domains = "subdivision",
+                                    design = "strata",
+                                    var = FALSE,
+                                    na.rm = TRUE
+)
+
+saveRDS(model_direct_admin3, file = "data/processed/out/model_direct_admin3.rds")
+
+# compare plots
+
+#cmp_plots3 = compare_plot(ebp_model_admin3, model_direct_admin3)
+
+#for(pl in cmp_plots3) {
+#  ggsave(paste0("outputs/plots/ebp/a3/","plot_",runif(1),".svg"), pl)
+#}
+
+
+#grid.arrange(unlist(cmp_plots3), ncol=4, nrow=5)
+m3pl = plot(ebp_model_admin3) 
+
+save_plots_cus(paste0("outputs/plots/ebp/a3/","plot_",runif(1),".png"),m3pl)
+#for(pl in m3pl) {
+#  ggsave(paste0("outputs/plots/ebp/a3/","plot_",runif(1),".png"), pl)
+#}
+
+
+cm_admin3_map_sf = sf::read_sf(get_map_file("gadm41_CMR_3.json"))
+map_cm_admin3_sf = cm_admin3_map_sf %>% mutate(
+  Domain = NAME_3
+)
+
+map_plot(
+  object = ebp_model_admin3, MSE = TRUE, CV = FALSE,
+  map_obj = map_cm_admin3_sf, indicator = c("Mean"),
+  map_dom_id = "Domain",
+  #map_tab = 
+)
+
+
+
+# EBP admin2 --------------------------------------------------------------
+
+ebp_model_admin2 <- ebp(
+  fixed = wealthscoreshifted ~ typeresidence  + edu + water_drink + electricity + automobile + cook_fuel + toilet + mat_floor + malaria_rdt + anemia_level + crowding,
+  pop_data = datc,
+  pop_domains = "division", # Replace with your domain variable
+  #smp_data = datc,
+  smp_data = sampled_data,
+  smp_domains = "division", # Replace with your domain variable
+  #threshold = median(ebp_data_small$hv271), # Define a threshold if needed
+  #weights = "weight",
+  pop_weights = "weight",
+  interval = c(0,5),
+  transformation = "log", # Transformation for the dependent variable
+  L = 200, # Number of Monte Carlo simulations
+  B = 200,
+  na.rm = TRUE,
+  MSE = TRUE,
+  cpus = 8,
+  #aggregate_to = "domain"
+)
+
+
+# save ebp3 model
+saveRDS(ebp_model_admin2, file = "data/processed/out/ebp_model_admin2.rds")
+
+model_direct_admin2 <- emdi::direct(y = "wealthscoreshifted",
+                                    smp_data = datc, 
+                                    weights = "weight", 
+                                    #threshold = m,
+                                    smp_domains = "division",
+                                    design = "strata",
+                                    var = FALSE,
+                                    na.rm = TRUE
+)
+
+saveRDS(model_direct_admin2, file = "data/processed/out/model_direct_admin2.rds")
+
+
+
+# compare plots
+
+cmp_plots2 = compare_plot(ebp_model_admin2, model_direct_admin2)
+
+for(pl in cmp_plots2) {
+  ggsave(paste0("outputs/plots/ebp/a2/","plot_",runif(1),".svg"), pl)
+}
+
+#m2pl = plot(ebp_model_admin2) 
+
+#save_plots_cus(paste0("outputs/plots/ebp/a2/","plot_",runif(1),".png"),m2pl)
+#for(pl in m2pl) {
+#  ggsave(paste0("outputs/plots/ebp/a2/","plot_",runif(1),".png"), pl)
+#}
+
+cm_admin2_map_sf = sf::read_sf(get_map_file("gadm41_CMR_2.json"))
+map_cm_admin2_sf = cm_admin2_map_sf %>% mutate(
+  Domain = NAME_2
+)
+
+map_plot(
+  object = ebp_model_admin2, MSE = TRUE, CV = FALSE,
+  map_obj = map_cm_admin2_sf, indicator = c("Mean"),
+  map_dom_id = "Domain",
+  #map_tab = 
+)
+
+
+
+# EBP admin 1 -------------------------------------------------------------
+ebp_model_admin1 <- ebp(
+  fixed = wealthscoreshifted ~ typeresidence  + edu + water_drink + electricity + automobile + cook_fuel + toilet + mat_floor + malaria_rdt + anemia_level + crowding,
+  pop_data = datc,
+  pop_domains = "region", # Replace with your domain variable
+  #smp_data = datc,
+  smp_data = sampled_data,
+  smp_domains = "region", # Replace with your domain variable
+  #threshold = median(ebp_data_small$hv271), # Define a threshold if needed
+  #weights = "weight",
+  pop_weights = "weight",
+  interval = c(0,5),
+  transformation = "log", # Transformation for the dependent variable
+  L = 200, # Number of Monte Carlo simulations
+  B = 200,
+  na.rm = TRUE,
+  MSE = TRUE,
+  cpus = 8,
+  #aggregate_to = "domain"
+)
+
+# save ebp3 model
+saveRDS(ebp_model_admin1, file = "data/processed/out/ebp_model_admin1.rds")
+
+model_direct_admin1 <- emdi::direct(y = "wealthscoreshifted",
+                                    smp_data = datc, 
+                                    weights = "weight", 
+                                    #threshold = m,
+                                    smp_domains = "region",
+                                    design = "strata",
+                                    var = FALSE,
+                                    na.rm = TRUE
+)
+
+saveRDS(model_direct_admin1, file = "data/processed/out/model_direct_admin1.rds")
+
+# compare plots
+
+#cmp_plots1 = compare_plot(ebp_model_admin1, model_direct_admin1)
+
+#for(pl in cmp_plots1) {
+#  ggsave(paste0("outputs/plots/ebp/a1/","plot_",runif(1),".svg"), pl)
+#}
+
+
+#m1pl = plot(ebp_model_admin1) 
+
+#save_plots_cus(paste0("outputs/plots/ebp/a1/","plot_",runif(1),".png"),m1pls)
+#for(pl in m1pl) {
+#  ggsave(paste0("outputs/plots/ebp/a1/","plot_",runif(1),".png"), pl)
+#}
+
+cm_admin1_map_sf = sf::read_sf(get_map_file("gadm41_CMR_1.json"))
+map_cm_admin1_sf = cm_admin1_map_sf %>% mutate(
+  Domain = NAME_1
+)
+
+map_plot(
+  object = ebp_model_admin1, MSE = TRUE, CV = FALSE,
+  map_obj = map_cm_admin1_sf, indicator = c("Mean"),
+  map_dom_id = "Domain",
+  #map_tab = 
+)
+
+
+
+# Temp: restore models from filesystem ------------------------------------
+
+ebp_model_admin1 = readRDS("data/processed/out/ebp_model_admin1.rds")
+ebp_model_admin2 = readRDS("data/processed/out/ebp_model_admin2.rds")
+ebp_model_admin3 = readRDS("data/processed/out/ebp_model_admin3.rds")
+
+
+# direct
+
+model_direct_admin1 = readRDS("data/processed/out/model_direct_admin1.rds")
+model_direct_admin2 = readRDS("data/processed/out/model_direct_admin2.rds")
+model_direct_admin3 = readRDS("data/processed/out/model_direct_admin3.rds")
+
+
+
+# Temp: end of model restore ----------------------------------------------
+
+# merge estimated indicator results to original dataset
+ebp3.est.ind <- ebp_model_admin3$ind
+colnames(ebp3.est.ind)[colnames(ebp3.est.ind) =='Domain'] <- 'subdivision'
+
+mdat <- merge(datc, ebp3.est.ind[,c("subdivision","Mean", "Head_Count","Poverty_Gap", "Gini")], by = "subdivision", all.x = TRUE)
+mdat <- merge(data_full, ebp3.est.ind[,c("subdivision","Mean", "Head_Count","Poverty_Gap", "Gini")], by = "subdivision", all.x = TRUE)
+
+mdat <- na.omit(mdat)
+
+mdat.smooth.wealthscore_mean <- smoothSurvey(data = mdat, geo = geo3, Amat = amat3,
+                                      responseType = "gaussian", responseVar = "Mean", regionVar = "subdivision",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                                      strataVar = "strata", weightVar = "weight", clusterVar = NULL,
+                                      CI = 0.95)
+
+
+mdat.smooth.headcount <- smoothSurvey(data = mdat, geo = geo3, Amat = amat3,
+                                    responseType = "gaussian", responseVar = "Head_Count", regionVar = "subdivision",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                                    strataVar = "strata", weightVar = "weight", clusterVar = NULL,
+                                    CI = 0.95)
+
+mdat.smooth.povgap <- smoothSurvey(data = mdat, geo = geo3, Amat = amat3,
+                                      responseType = "gaussian", responseVar = "Poverty_Gap", regionVar = "subdivision",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                                      strataVar = "strata", weightVar = "weight", clusterVar = NULL,
+                                      CI = 0.95)
+
+mdat.smooth.gini <- smoothSurvey(data = mdat, geo = geo3, Amat = amat3,
+                                      responseType = "gaussian", responseVar = "Gini", regionVar = "subdivision",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                                      strataVar = "strata", weightVar = "weight", clusterVar = NULL,
+                                      CI = 0.95)
+
+all_domains <- data.frame(subdivision = rownames(amat3))
+mdat_full <- merge(all_domains, mdat, 
+                   by = "subdivision", 
+                   all.x = TRUE)
+
+
+mdat_full.smooth <- smoothSurvey(data = mdat_full, geo = geo3, Amat = amat3,
+                            responseType = "gaussian", responseVar = "Head_Count", regionVar = "subdivision",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                            strataVar = "strata", weightVar = "weight", clusterVar = NULL,
+                            CI = 0.95)
+
+
+
+
+
+library(survey)
+
+
+ebp3.ind.design <- svydesign(ids = ~cluster, strata = ~strata,
+                             weights = ~weight, data = mdat, nest = TRUE)
+
+des1 <- svydesign(ids = ~cluster, strata = NULL,
+                  weights = NULL, data = mdat, nest = FALSE)
+
+des8 <- svydesign(ids = ~cluster, strata = ~strata,
+                                  weights = ~weight, data = mdat_full, nest = TRUE)
+
+Xmat1 <- aggregate(wealthscoreshifted ~ subdivision,
+                  data = datc, FUN = mean)
+
+
+inla.setOption(num.threads = 1)
+tmp <- "C:/users/Tata/temp/inla"
+dir.create(tmp, showWarnings = FALSE)
+Sys.setenv(TMPDIR = tmp)
+
+
+eei <- smoothArea(wealthscoreshifted ~ 1, 
+                                  domain = ~subdivision,
+                                  #design = ebp3.ind.desig,
+                                  design = ebp3.ind.design,
+                                  adj.mat = amat3,
+                                  pc.u = 1,
+                                  pc.alpha =  0.01,
+                                  pc.u.phi = 0.5,
+                                  pc.alpha.phi = 2/3,
+                                  return.samples = FALSE,
+                                  transform = "log" # for binary respose
+                                  #transform = "logit" # for binary respose
+)
+
+
+
+
+# Smothing: end use of merged estimated indicators ------------------------
+
+
+
+
+# EBP results -------------------------------------------------------------
+
+ebp3.est.ind <- ebp_model_admin3$ind # use as dataset for the BYM2 model
+
+ebp3.est.ind.smooth <- smoothSurvey(data = ebp3.est.ind, geo = geo3, Amat = amat3,
+                                responseType = "gaussian", responseVar = "Head_Count", regionVar = "Domain",#                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+                                 strataVar = NULL, weightVar = NULL, clusterVar = NULL,
+                                 CI = 0.95)
+
+#merge(ebp3.est.ind, datc[,c()])
+
+ebp3.ind.design2 <- svydesign(ids = ~0, strata = NULL,
+                  weights = NULL, data = ebp3.est.ind, nest = TRUE)
+
+ebp3.est.ind.smooth <- smoothArea(Head_Count ~ 1, 
+                               domain = ~Domain,
+                               design = ebp3.ind.design2,
+                               adj.mat = amat3,
+                               pc.u = 1,
+                               pc.alpha =  0.01,
+                               pc.u.phi = 0.5,
+                               pc.alpha.phi = 2/3
+                               #transform = "log" # for binary respose
+                               #transform = "logit" # for binary respose
+)
+
+
+
+
+# End results -------------------------------------------------------------
+
+
+
+
+
+
+# ---> check -ve values in hessian matrix
+
+#control.inla = list(strategy = "adaptive",int.strategy = "eb")
+
+
+#dd.region.smooth <- smoothSurvey(data = datc, geo = geo3, Amat = amat3,
+ #                                #responseType = "gaussian", responseVar = "wealthscore", regionVar = "subdivision",
+ #                                responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+#                                 strataVar = "strata", weightVar = "weight", clusterVar = "~cluster+id",
+#                                 CI = 0.95)
+
+#dd.region.smooth <- smoothArea(data = datc, geo = geo3, Amat = amat3,
+                                 #responseType = "gaussian", responseVar = "wealthscore", regionVar = "subdivision",
+#                                 responseType = "gaussian", responseVar = "wealthscoreshifted", regionVar = "subdivision",
+#                                 strataVar = "strata", weightVar = "weight", clusterVar = "~cluster",
+#                                 CI = 0.95)
+
+library(survey)
+
+des0 <- svydesign(ids = ~cluster, strata = ~strata,
+                  weights = ~weight, data = datc, nest = TRUE)
+
+Xmat <- aggregate(wealthscoreshifted ~ subdivision,
+                 data = datc, FUN = mean) # df of area level domains
+
+#pmat <- aggregate(datc, by = datc, FUN = mean)
+
+# direct
+
+dd.subdiv.smooth <- smoothArea(wealthscore ~ 1, 
+                               domain = ~subdivision,
+                               design = des0,
+                               adj.mat = amat3,
+                               pc.u = 1,
+                               pc.alpha =  0.01,
+                               pc.u.phi = 0.5,
+                               pc.alpha.phi = 2/3,
+                               transform = "log" # for binary respose
+                               #transform = "logit" # for binary respose
+                               )
+
+# indirect
+
+# formula: wealthscoreshifted ~ typeresidence  + edu + water_drink + electricity + automobile + cook_fuel + toilet + mat_floor + malaria_rdt + anemia_level + crowding,
+da <- datc
+des2 <- svydesign(ids = ~cluster, strata = ~strata,
+                  weights = ~weight, data = da, nest = TRUE)
+
+Xmat1 <- aggregate(wealthscoreshifted ~ subdivision,
+                  data = da, FUN = mean) 
+
+
+da$subdivision <- factor(da$subdivision, levels = rownames(amat3))
+
+adj.amat3 <- amat3[levels(da$subdivision), levels(da$subdivision)]
+
+
+
+dd.subdiv.smooth.cov <- smoothArea(wealthscoreshifted ~ typeresidence  + edu + water_drink + electricity + automobile + cook_fuel + toilet + mat_floor + malaria_rdt + anemia_level + crowding, 
+                               domain = ~subdivision,
+                               design = des2,
+                               adj.mat = adj.amat3,
+                               X.domain = Xmat1,
+                               pc.u = 1,
+                               pc.alpha =  0.01,
+                               pc.u.phi = 0.5,
+                               pc.alpha.phi = 2/3,
+                               transform = "log" # for binary respose
+                               #transform = "logit" # for binary respose
+)
+
+
+graph <- inla.read.graph(amat3)
+
+formula_inla <- wealthscore ~ 1 +
+  f(subdivision, model = "bym2", graph = graph,
+    scale.model = TRUE)
+formla <- f(subdivision, model = "bym2", graph = graph, scale.model = TRUE)
+
+fit_inla <- inla(
+  #formula_inla,
+  #formula = wealthscore ~ 1,
+  formla,
+  family = "gaussian",
+  data = mdat,
+  #weights = 1 / direct$var,
+  control.predictor = list(compute = TRUE),
+  control.compute = list(dic = TRUE, waic = TRUE),
+  num.threads = 1
+)
+
+mdat_full$area_id <- as.integer(as.factor(mdat_full$subdivision))
+
+formula1 <- wealthscore ~ 1 +
+  f(area_id,
+    model = "bym2",
+    graph = graph,
+    scale.model = TRUE,
+    hyper = list(
+      prec = list(
+        prior = "pc.prec",
+        param = c(1, 0.01)
+      ),
+      phi = list(
+        prior = "pc",
+        param = c(0.5, 2/3)
+      )
+    )
+  )
+
+
+
+result <- inla(
+  formula1,
+  family = "gaussian",
+  data = mdat_full,
+  E = expected,   # if using offset for disease mapping
+  control.compute = list(dic = TRUE, waic = TRUE),
+  verbose = TRUE
+)
+
+
+
+
+
+
+
+
+# ploting using the summer package ----------------------------------------
+
+prev <- NULL
+prev <- rbind(prev, data.frame(domain = ebp_model_admin3$ind$Domain,
+                               mean = ebp_model_admin3$ind$Head_Count,
+                               var = ebp_model_admin3$MSE$Head_Count,
+                               type = "Head count Ratio"))
+prev <- rbind(prev, data.frame(domain = dd.subdiv.smooth$direct.est$domain,
+                               mean = dd.subdiv.smooth$direct.est$mean,
+                               var = dd.subdiv.smooth$direct.est$var,
+                               type = "Direct estimates summer"))
+prev <- rbind(prev, data.frame(domain = dd.subdiv.smooth$bym2.model.est$domain,
+                               mean = dd.subdiv.smooth$bym2.model.est$mean,
+                               var = dd.subdiv.smooth$bym2.model.est$var,
+                               type = "BYM2 estimates summer"))
+
+
+library(SUMMER)
+library(gridExtra)
+
+g1 <- mapPlot(prev, geo = geo3, by.data = "domain", by.geo = "NAME_3",
+              variables = "type", values = "mean", is.long = TRUE, legend.label = "EBP Estimates",
+              ncol = 2)
+g2 <- mapPlot(prev, geo = geo3, by.data = "domain", by.geo = "NAME_3",
+              variables = "type", values = "var", is.long = TRUE, legend.label = "Variance",
+              ncol = 2)
+
+mean_bym2 <- mapPlot(dd.subdiv.smooth$bym2.model.est, geo = geo3, by.data = "domain", by.geo = "NAME_3",
+              variables = "mean", is.long = FALSE, legend.label = "Mean",
+              ncol = 1)
+
+var_bym2 <- mapPlot(dd.subdiv.smooth$bym2.model.est, geo = geo3, by.data = "domain", by.geo = "NAME_3",
+              variables = "var", is.long = FALSE, legend.label = "Variance",
+              ncol = 1)
+
+
+grid.arrange(g1, g2, ncol = 1)
+
+
+cm_admin3_map_sf = sf::read_sf(get_map_file("gadm41_CMR_3.json"))
+map_cm_admin3_sf = cm_admin3_map_sf %>% mutate(
+  Domain = NAME_3
+)
+
+map_plot(
+  object = ebp_model_admin3, MSE = TRUE, CV = FALSE,
+  map_obj = map_cm_admin3_sf, indicator = c("Mean"),
+  map_dom_id = "Domain",
+  #map_tab = 
+)
+
