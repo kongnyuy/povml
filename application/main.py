@@ -15,6 +15,7 @@ LetsPlot.setup_html()
 cwd_folder = os.getcwd().split("/").pop()
 path_prefix = ""
 
+
 if cwd_folder != "application":
     path_prefix = "application"
 
