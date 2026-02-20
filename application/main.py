@@ -6,17 +6,18 @@ from streamlit_folium import st_folium
 import geopandas as gpd
 from lets_plot import *
 from shapely.geometry import Point
-import utils as webutils
+import utils as utils
 import pathlib
 import os
+from pathlib import Path
 
 LetsPlot.setup_html()
 
-cwd_folder = os.getcwd().split("/").pop()
+cwd_folder = Path.cwd().name
 path_prefix = ""
 
 if cwd_folder != "application":
-    path_prefix = "application"
+    path_prefix = "application/"
 
 
 # -------------------------------------------------
@@ -29,11 +30,11 @@ st.set_page_config(layout="wide")
 # -------------------------------------------------
 @st.cache_data
 def load_data():    
-    df = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv"))
+    df = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"))
     return df
 
 @st.cache_data
-def load_data_aggregate(filename_with_ext=pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv")):
+def load_data_aggregate(filename_with_ext=pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv")):
     df = pd.read_csv(f"data/{filename_with_ext}")
     return df
 
@@ -41,16 +42,16 @@ def load_data_aggregate(filename_with_ext=pathlib.Path(path_prefix + "/data/cm.s
 def load_data_ebp(admin_level="region"):
     res = None
     if admin_level == "region":
-        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.ebp.ind.csv"))
-        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.ebp.mse.csv"))
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "data/cm.region.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "data/cm.region.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     elif admin_level == "division":
-        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.ebp.ind.csv"))
-        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.ebp.mse.csv"))
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "data/cm.div.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "data/cm.div.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     elif admin_level == "subdivision":
-        ebp = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.ebp.ind.csv"))
-        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.ebp.mse.csv"))
+        ebp = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.ebp.ind.csv"))
+        ebp_mse = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.ebp.mse.csv"))
         res = {"ebp": ebp, "mse": ebp_mse}
     return res
 
@@ -59,13 +60,13 @@ def load_data_ebp(admin_level="region"):
 def load_data_agg(admin_level="region"):
     res = None
     if admin_level == "region":
-        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.region.agg.csv"))
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.region.agg.csv"))
     elif admin_level == "division":
-        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.div.agg.csv"))
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.div.agg.csv"))
     elif admin_level == "subdivision":
-        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.subdiv.agg.csv"))   
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"))   
     elif admin_level == "country":
-        res = pd.read_csv(pathlib.Path(path_prefix + "/data/cm.country.agg.csv"))  
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.country.agg.csv"))  
     return res
 
 
@@ -77,7 +78,7 @@ def load_data_agg(admin_level="region"):
 
 @st.cache_data
 def load_geojson():
-    with open(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson")) as f:
+    with open(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson")) as f:
         geojson = json.load(f)
     return geojson
 
@@ -86,26 +87,38 @@ def load_geojson():
 def load_geojson_cm(admin_level="region"):
     geojson = None
     if admin_level == "region":
-        with open(pathlib.Path(path_prefix + "/maps/cm.region.geojson")) as f:
+        with open(pathlib.Path(path_prefix + "maps/cm.region.geojson")) as f:
             geojson = json.load(f)
     elif admin_level == "division":
-        with open(pathlib.Path(path_prefix + "/maps/cm.division.geojson")) as f:
+        with open(pathlib.Path(path_prefix + "maps/cm.division.geojson")) as f:
             geojson = json.load(f)
     elif admin_level == "subdivision":
-        with open(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson")) as f:
+        # with open(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson")) as f:
+        with open(pathlib.Path(path_prefix + "maps/cm.subdivision_cond.geojson")) as f:
             geojson = json.load(f)
     return geojson
 
 @st.cache_data
 def load_geojson_gdf(admin_level="region"):
     if admin_level == "region":        
-        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.region.geojson"))
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.region.geojson"))
     elif admin_level == "division":        
-        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.division.geojson"))
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.division.geojson"))
     elif admin_level == "subdivision":        
-        gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson"))
+        # gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson"))
+        gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision_cond.geojson"))
     return gdf
 
+def get_admin_db(admin_level):
+    return load_geojson_gdf(admin_level=admin_level)
+
+
+
+inds = {"Headcount ratio": "Head_Count", 
+            "Poverty gap": "Poverty_Gap",
+            "Gini coefficient": "Gini",
+            "Wealth score mean": "Mean"
+            }
 
 
 df = load_data()
@@ -129,7 +142,7 @@ else:
     # -------------------------------------------------
     # MAIN DETAIL SECTION
     # -------------------------------------------------
-    MAX_WEALTHSCORE_MEAN = 500000
+    MAX_WEALTHSCORE_MEAN = 400000
     st.title(f"Analysis report:  {selected_date}")
 
     @st.dialog(title="Subdivision estimates Plot", width="large")
@@ -147,10 +160,15 @@ else:
     main_tab_agg, main_tab_ebp, main_tab_agg_maps = st.tabs(["Aggregated Estimates", "EBP Estimates", "Aggregated Maps"])
 
 
+    def to_indicator_selector(val):
+        return inds[val]
+
 
     with main_tab_agg:
         st.subheader("Aggregates by administrative level")
-        indicator = st.radio("Select the poverty indicator to plot", ["Head_Count", "Mean", "Poverty_Gap","Gini"])
+        indicator = st.radio("Select indicator to display", list(inds.keys()))
+        indicator = to_indicator_selector(indicator)
+
         slider_ind_filter_thresshold = st.slider(f"Filter by {indicator}. which areas have valus less than", value=float(1) if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN), step= 0.1 if indicator != "Mean" else float(100), min_value=0.0, max_value=1.0 if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN))
         tab_country, tab_region, tab_division, tab_subdivision = st.tabs(["Country", "Region", "Division", "Subdivision"])
         with tab_country:
@@ -194,7 +212,7 @@ else:
         # =================================================
         with tab_overview:
 
-            col_map, col_info = st.columns([2, 1])
+            col_map, col_info = st.columns([1.5, 1.5])
 
             with col_map:
                 st.subheader("Interactive Map")
@@ -216,9 +234,16 @@ else:
                     gdf,
                     name=f"{ctx_current_admin_level}",
                     style_function=style_function,
+                    highlight_function=lambda feature: {
+                        "fillColor": "yellow",
+                        "color": "black",
+                        "weight": 3,
+                        "fillOpacity": 0.7,
+                    },
+                tooltip=folium.GeoJsonTooltip(fields=[ctx_current_admin_level]),
                 ).add_to(m)
 
-                map_data = st_folium(m, width=800, height=600)
+                map_data = st_folium(m, width=600, height=600)
 
             with col_info:
                 st.subheader("Area Information")
@@ -234,10 +259,17 @@ else:
                     clicked_region = gdf[gdf.contains(point)]
                     if not clicked_region.empty:
                         region_name = clicked_region.iloc[0][ctx_current_admin_level]
-                        st.write("Clicked region:", region_name)
-                        wiki_summary = webutils.fetch_wikipedia_cameroon_summary(region_name)
-                        st.markdown(f"## {region_name}")    
-                        st.write(wiki_summary)
+                        st.write(f"Clicked on {ctx_current_admin_level}:", region_name)
+                        # wiki_summary = utils.fetch_wikipedia_cameroon_summary(region_name)
+                        # st.markdown(f"## {region_name}")    
+                        # st.write(wiki_summary)
+                        admin_db = get_admin_db(ctx_current_admin_level)
+
+                        area_info = utils.area_info(region_name, ctx_current_admin_level, admin_db)
+                        if area_info == None:
+                            st.write("No area information found")
+                        else:
+                            st.write(area_info)                            
 
 
                     else:
@@ -257,25 +289,26 @@ else:
 
     with main_tab_agg_maps:
         st.subheader("Aggregated Maps")
-        display_indicator = st.selectbox("Select indicator to display", ["Head_Count", "Mean", "Poverty_Gap","Gini"])
+        # display_indicator = st.selectbox("Select indicator to display", ["Head_Count", "Mean", "Poverty_Gap","Gini"])
+        display_indicator = to_indicator_selector(st.selectbox("Select indicator to display", list(inds.keys())))
         HEIGHT = 1000
         WIDTH = 1000
         col1, col2,col3 = st.columns(3)
         
 
-        st.caption("Headcount ratio")
+        # st.caption("Headcount ratio")
         with col1:
-            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.subdivision.geojson"))
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @subdivision').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT,width=WIDTH)
         with col2:
-            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.division.geojson"))
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.division.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @division').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)
         with col3:
-            gdf = gpd.read_file(pathlib.Path(path_prefix + "/maps/cm.region.geojson"))
+            gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.region.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @region').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)    

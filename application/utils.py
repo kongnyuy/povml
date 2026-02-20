@@ -31,7 +31,7 @@ def fetch_wikipedia_cameroon_summary(region_name):
             extract = ''
         return extract
 
-        return data.get("extract", "No summary available.")
+        # return data.get("extract", "No summary available.")
     return "No Wikipedia information found."
 
 
@@ -45,3 +45,45 @@ def fetch_worldbank_data(country_code="CM"):
             latest = data[1][0]
             return latest["value"]
     return None
+
+def _has_subdiv(alev):
+    if alev == "subdivision":
+        return True
+    else:
+        return False
+
+def _has_div(alev):
+    if alev == "subdivision" or alev == "division":
+        return True
+    else:
+        return False
+
+def _has_region(alev):
+    if alev == "subdivision" or alev == "division" or alev == "region":
+        return True
+    else:
+        return False
+
+
+def area_info(region_name, ctx_admin_level, admin_db):
+    if region_name not in admin_db[ctx_admin_level].values:
+        return None
+    d = admin_db[admin_db[ctx_admin_level] == region_name]
+
+    res = {
+        "Area label": d[ctx_admin_level],
+        "Head count ratio": d["Head_Count"],
+        "Poverty gap": d["Poverty_Gap"],
+        "Gini coefficient": d["Gini"],
+    }
+
+    if _has_subdiv(ctx_admin_level):
+        res["Subdivision"] = d["subdivision"]
+    if _has_div(ctx_admin_level):
+        res["Division"] = d["division"]
+    if _has_region(ctx_admin_level):        
+        res["Region"] = d["region"]
+    
+    return res
+
+    
