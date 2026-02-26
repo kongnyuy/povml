@@ -26,18 +26,23 @@ if cwd_folder != "application":
 # -------------------------------------------------
 st.set_page_config(layout="wide")
 
+
 # -------------------------------------------------
 # LOAD DATA
 # -------------------------------------------------
 @st.cache_data
-def load_data():    
+def load_data():
     df = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"))
     return df
 
+
 @st.cache_data
-def load_data_aggregate(filename_with_ext=pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv")):
+def load_data_aggregate(
+    filename_with_ext=pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"),
+):
     df = pd.read_csv(f"data/{filename_with_ext}")
     return df
+
 
 @st.cache_data
 def load_data_ebp(admin_level="region"):
@@ -65,17 +70,16 @@ def load_data_agg(admin_level="region"):
     elif admin_level == "division":
         res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.div.agg.csv"))
     elif admin_level == "subdivision":
-        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"))   
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.subdiv.agg.csv"))
     elif admin_level == "country":
-        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.country.agg.csv"))  
+        res = pd.read_csv(pathlib.Path(path_prefix + "data/cm.country.agg.csv"))
     return res
-
-
 
 
 # -------------------------------------------------
 # LOAD GEOJSON
 # -------------------------------------------------
+
 
 @st.cache_data
 def load_geojson():
@@ -99,32 +103,35 @@ def load_geojson_cm(admin_level="region"):
             geojson = json.load(f)
     return geojson
 
+
 @st.cache_data
 def load_geojson_gdf(admin_level="region"):
-    if admin_level == "region":        
+    if admin_level == "region":
         gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.region.geojson"))
-    elif admin_level == "division":        
+    elif admin_level == "division":
         gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.division.geojson"))
-    elif admin_level == "subdivision":        
+    elif admin_level == "subdivision":
         # gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson"))
-        gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision_cond.geojson"))
+        gdf = gpd.read_file(
+            pathlib.Path(path_prefix + "maps/cm.subdivision_cond.geojson")
+        )
     return gdf
+
 
 def get_admin_db(admin_level):
     return load_geojson_gdf(admin_level=admin_level)
 
 
-
-inds = {"Poverty rate (Headcount ratio)": "Head_Count", 
-            "Poverty gap": "Poverty_Gap",
-            "Gini coefficient": "Gini",
-            "Wealth score mean": "Mean"
-            }
+inds = {
+    "Poverty rate (Headcount ratio)": "Head_Count",
+    "Poverty gap": "Poverty_Gap",
+    "Gini coefficient": "Gini",
+    "Wealth score mean": "Mean",
+}
 
 
 df = load_data()
 geojson = load_geojson()
-
 
 
 # -------------------------------------------------
@@ -132,14 +139,13 @@ geojson = load_geojson()
 # -------------------------------------------------
 st.sidebar.title("Survey Dates")
 
-survey_dates = ["DHS 2018","DHS 2011", "DHS 2004","DHS 1998", "DHS 1991"]
+survey_dates = ["DHS 2018", "DHS 2011", "DHS 2004", "DHS 1998", "DHS 1991"]
 selected_date = st.sidebar.selectbox("Select Survey Date", survey_dates)
 
 if selected_date != "DHS 2018":
     st.error(f"No analysis done for survey: {selected_date}")
 
 else:
-
     # -------------------------------------------------
     # MAIN DETAIL SECTION
     # -------------------------------------------------
@@ -147,52 +153,70 @@ else:
     st.title(f"Analysis report:  {selected_date}")
 
     @st.dialog(title="Subdivision estimates Plot", width="large")
-    def subdiv_plot_dialog(subdiv_data  = None, _ind = "Head_Count"):
+    def subdiv_plot_dialog(subdiv_data=None, _ind="Head_Count"):
         if subdiv_data is None:
             subdiv_data = load_data_agg(admin_level="subdivision")
-        
-        thress = st.slider(f"Filter by {indicator}. which areas have valus less than", value=float(1) if _ind != "Mean" else float(MAX_WEALTHSCORE_MEAN), step= 0.1 if _ind != "Mean" else float(100), min_value=0.0, max_value=1.0 if _ind != "Mean" else float(MAX_WEALTHSCORE_MEAN))     
-        subdiv_disp_data = subdiv_data[subdiv_data[indicator] < thress] 
-        st.bar_chart(subdiv_disp_data, x="subdivision", y=_ind, color=_ind, horizontal=True)
-        
 
+        thress = st.slider(
+            f"Filter by {indicator}. which areas have valus less than",
+            value=float(1) if _ind != "Mean" else float(MAX_WEALTHSCORE_MEAN),
+            step=0.1 if _ind != "Mean" else float(100),
+            min_value=0.0,
+            max_value=1.0 if _ind != "Mean" else float(MAX_WEALTHSCORE_MEAN),
+        )
+        subdiv_disp_data = subdiv_data[subdiv_data[indicator] < thress]
+        st.bar_chart(
+            subdiv_disp_data, x="subdivision", y=_ind, color=_ind, horizontal=True
+        )
 
-
-    main_tab_agg, main_tab_ebp, main_tab_agg_maps = st.tabs(["Aggregated Estimates", "EBP Estimates", "Aggregated Maps"])
-
+    main_tab_agg, main_tab_ebp, main_tab_agg_maps = st.tabs(
+        ["Aggregated Estimates", "EBP Estimates", "Aggregated Maps"]
+    )
 
     def to_indicator_selector(val):
         return inds[val]
-
 
     with main_tab_agg:
         st.subheader("Aggregates by administrative level")
         indicator = st.radio("Select indicator to display", list(inds.keys()))
         indicator = to_indicator_selector(indicator)
 
-        slider_ind_filter_thresshold = st.slider(f"Filter by {indicator}. which areas have valus less than", value=float(1) if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN), step= 0.1 if indicator != "Mean" else float(100), min_value=0.0, max_value=1.0 if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN))
-        tab_country, tab_region, tab_division, tab_subdivision = st.tabs(["Country", "Region", "Division", "Subdivision"])
+        slider_ind_filter_thresshold = st.slider(
+            f"Filter by {indicator}. which areas have valus less than",
+            value=float(1) if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN),
+            step=0.1 if indicator != "Mean" else float(100),
+            min_value=0.0,
+            max_value=1.0 if indicator != "Mean" else float(MAX_WEALTHSCORE_MEAN),
+        )
+        tab_country, tab_region, tab_division, tab_subdivision = st.tabs(
+            ["Country", "Region", "Division", "Subdivision"]
+        )
         with tab_country:
-            st.table(load_data_agg(admin_level="country"))  
-        with tab_region:      
+            st.table(load_data_agg(admin_level="country"))
+        with tab_region:
             region_data = load_data_agg(admin_level="region")
-            # slider_ind_filter_thresshold = st.slider(f"Filter by {indicator}. which regions have valus less than", value=float(1), step= 0.1, min_value=0.0, max_value=1.0)     
-            disp_data = region_data[region_data[indicator] < slider_ind_filter_thresshold]
-            st.bar_chart(disp_data, x="region", y=indicator, color=indicator)            
+            # slider_ind_filter_thresshold = st.slider(f"Filter by {indicator}. which regions have valus less than", value=float(1), step= 0.1, min_value=0.0, max_value=1.0)
+            disp_data = region_data[
+                region_data[indicator] < slider_ind_filter_thresshold
+            ]
+            st.bar_chart(disp_data, x="region", y=indicator, color=indicator)
             st.table(disp_data)
-        with tab_division:        
-            div_data = load_data_agg(admin_level="division")            
-            div_disp_data = div_data[div_data[indicator] < slider_ind_filter_thresshold]    
-            st.bar_chart(div_disp_data, x="division", y=indicator, color=indicator) 
+        with tab_division:
+            div_data = load_data_agg(admin_level="division")
+            div_disp_data = div_data[div_data[indicator] < slider_ind_filter_thresshold]
+            st.bar_chart(div_disp_data, x="division", y=indicator, color=indicator)
             st.table(div_disp_data)
         with tab_subdivision:
-            subdiv_data = load_data_agg(admin_level="subdivision")                        
-            btn_show_plot = st.button("Show Distribution of Poverty indicators by Subdivision plot")
+            subdiv_data = load_data_agg(admin_level="subdivision")
+            btn_show_plot = st.button(
+                "Show Distribution of Poverty indicators by Subdivision plot"
+            )
             if btn_show_plot:
-                subdiv_plot_dialog(subdiv_data=subdiv_data, _ind=indicator)   
-            subdiv_disp_data = subdiv_data[subdiv_data[indicator] < slider_ind_filter_thresshold]         
+                subdiv_plot_dialog(subdiv_data=subdiv_data, _ind=indicator)
+            subdiv_disp_data = subdiv_data[
+                subdiv_data[indicator] < slider_ind_filter_thresshold
+            ]
             st.table(subdiv_disp_data)
-
 
     with main_tab_ebp:
         st.subheader("EBP Estimates by administrative level")
@@ -201,18 +225,16 @@ else:
         admin_levels = ["region", "division", "subdivision"]
         ctx_current_admin_level = st.selectbox("Select Admin Level", admin_levels)
         ctx_geojson = load_geojson_cm(admin_level=ctx_current_admin_level)
-        ctx_data_ebp = load_data_ebp(admin_level=ctx_current_admin_level)        
+        ctx_data_ebp = load_data_ebp(admin_level=ctx_current_admin_level)
 
-
-
-
-        tab_overview, tab_ebp, tab_mse = st.tabs(["Overview", "EBP Estimates", "MSE Estimates"])    
+        tab_overview, tab_ebp, tab_mse = st.tabs(
+            ["Overview", "EBP Estimates", "MSE Estimates"]
+        )
 
         # =================================================
         # TAB 1: OVERVIEW
         # =================================================
         with tab_overview:
-
             col_map, col_info = st.columns([1.5, 1.5])
 
             with col_map:
@@ -228,7 +250,7 @@ else:
                         "weight": 1,
                         "fillOpacity": 0.5,
                     }
-                
+
                 gdf = load_geojson_gdf(admin_level=ctx_current_admin_level)
 
                 geo = folium.GeoJson(
@@ -241,7 +263,7 @@ else:
                         "weight": 3,
                         "fillOpacity": 0.7,
                     },
-                tooltip=folium.GeoJsonTooltip(fields=[ctx_current_admin_level]),
+                    tooltip=folium.GeoJsonTooltip(fields=[ctx_current_admin_level]),
                 ).add_to(m)
 
                 map_data = st_folium(m, width=600, height=600)
@@ -262,16 +284,17 @@ else:
                         region_name = clicked_region.iloc[0][ctx_current_admin_level]
                         st.write(f"Clicked on {ctx_current_admin_level}:", region_name)
                         # wiki_summary = utils.fetch_wikipedia_cameroon_summary(region_name)
-                        # st.markdown(f"## {region_name}")    
+                        # st.markdown(f"## {region_name}")
                         # st.write(wiki_summary)
                         admin_db = get_admin_db(ctx_current_admin_level)
 
-                        area_info = utils.area_info(region_name, ctx_current_admin_level, admin_db)
+                        area_info = utils.area_info(
+                            region_name, ctx_current_admin_level, admin_db
+                        )
                         if area_info == None:
                             st.write("No area information found")
                         else:
-                            st.write(area_info)                            
-
+                            st.write(area_info)
 
                     else:
                         st.write("Clicked outside regions")
@@ -284,45 +307,75 @@ else:
         with tab_ebp:
             st.table(ctx_data_ebp["ebp"])
 
-
         with tab_mse:
-            st.table(ctx_data_ebp["mse"])    
+            st.table(ctx_data_ebp["mse"])
 
     with main_tab_agg_maps:
-        st.subheader("Aggregated Maps")
+        st.subheader("Aggregation Maps")
         # display_indicator = st.selectbox("Select indicator to display", ["Head_Count", "Mean", "Poverty_Gap","Gini"])
-        display_indicator = to_indicator_selector(st.selectbox("Select indicator to display", list(inds.keys())))
+        display_indicator = to_indicator_selector(
+            st.selectbox("Select indicator to display", list(inds.keys()))
+        )
         HEIGHT = 1200
         WIDTH = 1200
-        col1, col2,col3 = st.columns(3)
-        
+        col1, col2, col3 = st.columns(3)
+
         @st.dialog(title="Poverty map", width="medium")
-        def open_dialog_map(mobj,title = ""):
+        def open_dialog_map(mobj, title=""):
             st.text(title)
             st.components.v1.html(mobj, height=400)
 
-
         # st.caption("Headcount ratio")
         with col1:
-            gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson"))
+            gdf = gpd.read_file(
+                pathlib.Path(path_prefix + "maps/cm.subdivision.geojson")
+            )
             geojson_dict = json.loads(gdf.to_json())
-            p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @subdivision').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            p2 = ggplot() + geom_map(
+                aes(fill=display_indicator),
+                map=gdf,
+                alpha=0.5,
+                tooltips=layer_tooltips()
+                .line("Subdivision: @subdivision")
+                .format("Mean", ".2f")
+                .line("Wealth index score: @Mean")
+                .format("Head_Count", ".2f")
+                .line("Poverty rate(Headcount ratio): @Head_Count")
+                .format("Poverty_Gap", ".2f")
+                .line("Poverty gap: @Poverty_Gap")
+                .format("Gini", ".2f")
+                .line("Gini coefficient: @Gini"),
+                color="white",
+            )
             st.subheader("Subdivision")
-            should_enlarge_subdiv = st.button("enlarge",key="enlarge_subdiv")
+            should_enlarge_subdiv = st.button("enlarge", key="enlarge_subdiv")
             if should_enlarge_subdiv:
-                open_dialog_map(p2.to_html(), "Subdivision")            
+                open_dialog_map(p2.to_html(), "Subdivision")
             st.space("small")
-            st.components.v1.html(p2.to_html(), height=HEIGHT,width=WIDTH)
+            st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)
             st.space("small")
-            
-
 
         with col2:
             gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.division.geojson"))
             geojson_dict = json.loads(gdf.to_json())
-            p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @division').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            p2 = ggplot() + geom_map(
+                aes(fill=display_indicator),
+                map=gdf,
+                alpha=0.5,
+                tooltips=layer_tooltips()
+                .line("Division: @division")
+                .format("Mean", ".2f")
+                .line("Wealth index score: @Mean")
+                .format("Head_Count", ".2f")
+                .line("Poverty rate(Headcount ratio): @Head_Count")
+                .format("Poverty_Gap", ".2f")
+                .line("Poverty gap: @Poverty_Gap")
+                .format("Gini", ".2f")
+                .line("Gini coefficient: @Gini"),
+                color="white",
+            )
             st.subheader("Division")
-            should_enlarge_div = st.button("enlarge",key="enlarge_div")
+            should_enlarge_div = st.button("enlarge", key="enlarge_div")
             if should_enlarge_div:
                 open_dialog_map(p2.to_html(), "Division")
             st.space("small")
@@ -330,10 +383,25 @@ else:
         with col3:
             gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.region.geojson"))
             geojson_dict = json.loads(gdf.to_json())
-            p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @region').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            p2 = ggplot() + geom_map(
+                aes(fill=display_indicator),
+                map=gdf,
+                alpha=0.5,
+                tooltips=layer_tooltips()
+                .line("Region: @region")
+                .format("Mean", ".2f")
+                .line("Wealth index score: @Mean")
+                .format("Head_Count", ".2f")
+                .line("Poverty rate(Headcount ratio): @Head_Count")
+                .format("Poverty_Gap", ".2f")
+                .line("Poverty gap: @Poverty_Gap")
+                .format("Gini", ".2f")
+                .line("Gini coefficient: @Gini"),
+                color="white",
+            )
             st.subheader("Region")
-            should_enlarge_reg = st.button("enlarge",key="enlarge_reg")
+            should_enlarge_reg = st.button("enlarge", key="enlarge_reg")
             if should_enlarge_reg:
                 open_dialog_map(p2.to_html(), "Region")
             st.space("small")
-            st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)    
+            st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)
