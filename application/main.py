@@ -115,7 +115,7 @@ def get_admin_db(admin_level):
 
 
 
-inds = {"Headcount ratio": "Head_Count", 
+inds = {"Poverty rate (Headcount ratio)": "Head_Count", 
             "Poverty gap": "Poverty_Gap",
             "Gini coefficient": "Gini",
             "Wealth score mean": "Mean"
@@ -292,24 +292,48 @@ else:
         st.subheader("Aggregated Maps")
         # display_indicator = st.selectbox("Select indicator to display", ["Head_Count", "Mean", "Poverty_Gap","Gini"])
         display_indicator = to_indicator_selector(st.selectbox("Select indicator to display", list(inds.keys())))
-        HEIGHT = 1000
-        WIDTH = 1000
+        HEIGHT = 1200
+        WIDTH = 1200
         col1, col2,col3 = st.columns(3)
         
+        @st.dialog(title="Poverty map", width="medium")
+        def open_dialog_map(mobj,title = ""):
+            st.text(title)
+            st.components.v1.html(mobj, height=400)
+
 
         # st.caption("Headcount ratio")
         with col1:
             gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.subdivision.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @subdivision').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            st.subheader("Subdivision")
+            should_enlarge_subdiv = st.button("enlarge",key="enlarge_subdiv")
+            if should_enlarge_subdiv:
+                open_dialog_map(p2.to_html(), "Subdivision")            
+            st.space("small")
             st.components.v1.html(p2.to_html(), height=HEIGHT,width=WIDTH)
+            st.space("small")
+            
+
+
         with col2:
             gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.division.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @division').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            st.subheader("Division")
+            should_enlarge_div = st.button("enlarge",key="enlarge_div")
+            if should_enlarge_div:
+                open_dialog_map(p2.to_html(), "Division")
+            st.space("small")
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)
         with col3:
             gdf = gpd.read_file(pathlib.Path(path_prefix + "maps/cm.region.geojson"))
             geojson_dict = json.loads(gdf.to_json())
             p2 = ggplot() + geom_map(aes(fill=display_indicator) ,map=gdf, alpha=0.5,tooltips=layer_tooltips().line('Subdivision: @region').format('Mean', '.2f').line('Mean value: @Mean').format('Head_Count', '.2f').line('Headcount ration: @Head_Count'),color='white')
+            st.subheader("Region")
+            should_enlarge_reg = st.button("enlarge",key="enlarge_reg")
+            if should_enlarge_reg:
+                open_dialog_map(p2.to_html(), "Region")
+            st.space("small")
             st.components.v1.html(p2.to_html(), height=HEIGHT, width=WIDTH)    

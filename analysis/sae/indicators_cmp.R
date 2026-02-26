@@ -36,6 +36,8 @@ library(corrplot)
 
 vars <- subdiv_aggs[, c("WealthScoreMean", "Head_Count", "Poverty_Gap", "Gini")]
 
+colnames(vars) <- c("Wealth Score", "Poverty Ratio", "Poverty Gap", "Gini coefficient")
+
 cor_mat <- cor(vars, use = "complete.obs")
 
 corrplot(cor_mat, method = "color", type = "upper",
@@ -72,9 +74,13 @@ corrplot(cor_data,
 
 library(GGally)
 
+# Rename columns to have social names
+colnames(subdiv_aggs1) <- c("Subdivision","Wealth score", "Poverty Ratio", "Poverty Gap", "Gini coefficient", "Wealth Quantile")
+
 # Assuming combined_df has columns: subdivision, WealthScoreMean, Head_Count, Poverty_Gap, Gini
 ggpairs(subdiv_aggs1, 
-        columns = c("WealthScoreMean", "Head_Count", "Poverty_Gap", "Gini"),
+        #columns = c("WealthScoreMean", "Head_Count", "Poverty_Gap", "Gini"),
+        columns = c("Wealth score", "Poverty Ratio", "Poverty Gap", "Gini coefficient"),
         title = "Correlation Matrix of Wealth score & Poverty indicator Metrics",
         lower = list(continuous = wrap("smooth", alpha = 0.3, size = 0.5))) 
 
