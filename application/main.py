@@ -227,7 +227,7 @@ else:
                     
             """)
         
-        st.image("maps/cm_3d_map_stack.png", caption="Aggregation style", width=600)
+        st.image("maps/cm_3d_map_stack.webp", caption="Aggregation style", width=600)
     
 
     with main_tab_agg:
