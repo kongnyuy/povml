@@ -24,7 +24,18 @@ if cwd_folder != "application":
 # -------------------------------------------------
 # PAGE CONFIG
 # -------------------------------------------------
-st.set_page_config(layout="wide")
+# st.set_page_config(layout="wide")
+
+
+st.set_page_config(
+    page_title="Cameroon Poverty assessment",  # Title shown in browser tab,
+    page_icon="🚀",  # Can be emoji or path to an image file
+    layout="wide",  # "centered" or "wide"
+    initial_sidebar_state="expanded",  # "auto", "expanded", "collapsed"
+)
+
+# st.title(f"Analysis report:  {selected_date}")
+st.title("Poverty assessment framework and visualisation toolkit for Cameroon")
 
 
 # -------------------------------------------------
@@ -150,7 +161,6 @@ else:
     # MAIN DETAIL SECTION
     # -------------------------------------------------
     MAX_WEALTHSCORE_MEAN = 400000
-    st.title(f"Analysis report:  {selected_date}")
 
     @st.dialog(title="Subdivision estimates Plot", width="large")
     def subdiv_plot_dialog(subdiv_data=None, _ind="Head_Count"):
@@ -169,12 +179,56 @@ else:
             subdiv_disp_data, x="subdivision", y=_ind, color=_ind, horizontal=True
         )
 
-    main_tab_agg, main_tab_ebp, main_tab_agg_maps = st.tabs(
-        ["Aggregated Estimates", "EBP Estimates", "Aggregated Maps"]
+    main_overview, main_tab_agg, main_tab_ebp, main_tab_agg_maps = st.tabs(
+        ["Description", "Aggregated Estimates", "EBP Estimates", "Aggregated Maps"]
     )
 
     def to_indicator_selector(val):
         return inds[val]
+
+    with main_overview:
+        # st.subheader("Overview")
+        
+        
+        # f3d = open("maps/cm_3d_map_stack.svg")
+        # st.image(f3d.read(), caption="Aggregation style", width=600)
+
+        # st.image()
+        
+        st.markdown("""
+            # Overview
+            
+            ### Asset baseed analysis framework
+                    
+            This framework utilizes a Principal Component Analysis (PCA) approach to construct a 
+            Wealth Index from Demographic and Health Survey (DHS) data. By analyzing household 
+            assets and access to basic services, we derive a continuous wealth score that serves 
+            as a proxy for economic status.
+
+            To provide granular insights, we employ Small Area Estimation (SAE) techniques, 
+            specifically Empirical Best Prediction (EBP), to produce reliable poverty estimates 
+            at lower administrative levels (Divisions and Subdivisions) where survey sample 
+            sizes are typically insufficient for direct estimation. A Bayesian spatial smoothing model
+            is used for predicting out of sample area indicators.
+                    
+            > For more information, visite our documentation site at [STATISTICAL MACHINE LEARNING MODELS FOR CONTENT AGGREGATION WITH APPLICATIONS ON THE ANALYSIS OF ECONOMIC AND FINANCIAL DATA](https://povml-6de1fe.gitlab.io/)
+
+            #### Multi-dimensional poverty dimensions
+            - **Education**
+            - **Health**
+            - **Living standards**
+            - **Sanitation**
+            #### Poverty Indicators:
+                    
+            - **Wealth score**: A multi-dimensional asset-based measure of wealth for an individual or area 
+            - **Poverty rate**: Also known as the headcount ratio, It representts the proportion of the population living below the poverty line
+            - **Poverty gap**: Reflects the average shortfall of the poor population from the poverty line
+            - **Gini coefficient**: The wealth inequality measure                        
+                    
+            """)
+        
+        st.image("maps/cm_3d_map_stack.webp", caption="Aggregation style", width=600)
+    
 
     with main_tab_agg:
         st.subheader("Aggregates by administrative level")
